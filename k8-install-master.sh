@@ -277,21 +277,21 @@ ufw reload
 
 # Install Kubernetes components
 echo 'Install Kubernetes components: kubelet kubeadm kubectl'
-versions=`curl -s https://packages.cloud.google.com/apt/dists/kubernetes-xenial/main/binary-amd64/Packages | grep Version | awk '{print $2}' | grep -P '\d\.[12]\d\.'`
-IFS=$'\n' versions=($versions)
+versions=`curl -s https://packages.cloud.google.com/apt/dists/kubernetes-xenial/main/binary-amd64/Packages | grep Version | awk '{print \$2}' | grep -P '\d\.[12]\d\.'`
+IFS=\$'\n' versions=(\$versions)
 echo 'Please select K8S version you want to install'
-select version in "${versions[@]}"; do   if [[ -n $version ]]; then     echo "You have selected version $version";     break;   else     echo "Invalid selection. Please try again.";   fi; done
+select version in "\${versions[@]}"; do   if [[ -n \$version ]]; then     echo "You have selected version \$version";     break;   else     echo "Invalid selection. Please try again.";   fi; done
 
 
-apt-get install -y kubelet=${version} kubeadm=${version} kubectl=${version}
+apt-get install -y kubelet=\${version} kubeadm=\${version} kubectl=\${version}
 
 # Enable and start kubelet service
 systemctl enable --now kubelet
 
 echo "Please select a link you want to use as K8S cluster interface:"
 links=`ls /sys/class/net`
-IFS=$'\n' links=($links) 
-select link in "${links[@]}"; do   if [[ -n $link ]]; then     echo "You have selected $link";     break;   else     echo "Invalid selection. Please try again.";   fi; done
+IFS=\$'\n' links=(\$links) 
+select link in "\${links[@]}"; do   if [[ -n \$link ]]; then     echo "You have selected \$link";     break;   else     echo "Invalid selection. Please try again.";   fi; done
 
 echo "Will use $link as K8S API interface, will add address 192.168.3.3/24 as it's address"
 ip a a 192.168.3.3/24 dev $link
@@ -302,7 +302,7 @@ kubeadm init \
   --service-cidr=10.130.0.0/16 \
   --ignore-preflight-errors=Swap \
   --apiserver-advertise-address 192.168.3.3  ## modify this address based on your node IP.  \
-  --kubernetes-version ${version}
+  --kubernetes-version \${version}
 
 # Copy kubeconfig to home directory
 mkdir -p \$HOME/.kube
