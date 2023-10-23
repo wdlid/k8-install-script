@@ -238,11 +238,13 @@ echo "deb https://apt.kubernetes.io/ kubernetes-xenial main" | tee -a /etc/apt/s
 echo 'Installing docker....'
 apt-get install -y apt-transport-https ca-certificates curl software-properties-common
 curl -fsSL https://download.docker.com/linux/ubuntu/gpg | apt-key add -
+
 add-apt-repository -y "deb [arch=amd64] https://download.docker.com/linux/ubuntu \$(lsb_release -cs) stable"
 apt-get -y install docker.io
 apt-get update -y
-apt-get -y install docker-ce docker-ce-cli docker-compose-plugin --skip-broken
+apt-get -y install docker-ce docker-ce-cli docker-compose-plugin
 
+systemctl unmask docker
 systemctl start docker
 systemctl enable docker
 
@@ -277,7 +279,7 @@ ufw reload
 
 # Install Kubernetes components
 echo 'Install Kubernetes components: kubelet kubeadm kubectl'
-versions=`curl -s https://packages.cloud.google.com/apt/dists/kubernetes-xenial/main/binary-amd64/Packages | grep Version | awk '{print \$2}' | grep -P '\d\.[12]\d\.'`
+versions=\`curl -s https://packages.cloud.google.com/apt/dists/kubernetes-xenial/main/binary-amd64/Packages | grep Version | awk '{print \$2}' | grep -P '\d\.[12]\d\.'\`
 IFS=\$'\n' versions=(\$versions)
 echo 'Please select K8S version you want to install'
 select version in "\${versions[@]}"; do   if [[ -n \$version ]]; then     echo "You have selected version \$version";     break;   else     echo "Invalid selection. Please try again.";   fi; done
@@ -297,11 +299,11 @@ echo "Will use \$link as K8S API interface, will add address 192.168.3.3/24 as i
 ip a a 192.168.3.3/24 dev \$link
 
 # Initialize kubeadm
-kubeadm init \
-  --pod-network-cidr=10.120.0.0/16 \
-  --service-cidr=10.130.0.0/16 \
-  --ignore-preflight-errors=Swap \
-  --apiserver-advertise-address 192.168.3.3  ## modify this address based on your node IP.  \
+kubeadm init \\
+  --pod-network-cidr=10.120.0.0/16 \\
+  --service-cidr=10.130.0.0/16 \\
+  --ignore-preflight-errors=Swap --ignore-preflight-errors=NumCPU \\
+  --apiserver-advertise-address 192.168.3.3  ## modify this address based on your node IP.  \\
   --kubernetes-version \${version}
 
 # Copy kubeconfig to home directory
