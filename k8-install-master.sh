@@ -289,12 +289,12 @@ apt-get install -y kubelet=\${version} kubeadm=\${version} kubectl=\${version}
 systemctl enable --now kubelet
 
 echo "Please select a link you want to use as K8S cluster interface:"
-links=`ls /sys/class/net`
+links=\`ls /sys/class/net\`
 IFS=\$'\n' links=(\$links) 
 select link in "\${links[@]}"; do   if [[ -n \$link ]]; then     echo "You have selected \$link";     break;   else     echo "Invalid selection. Please try again.";   fi; done
 
-echo "Will use $link as K8S API interface, will add address 192.168.3.3/24 as it's address"
-ip a a 192.168.3.3/24 dev $link
+echo "Will use \$link as K8S API interface, will add address 192.168.3.3/24 as it's address"
+ip a a 192.168.3.3/24 dev \$link
 
 # Initialize kubeadm
 kubeadm init \
