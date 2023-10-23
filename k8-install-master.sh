@@ -313,7 +313,8 @@ sudo chown \$(id -u):\$(id -g) \$HOME/.kube/config
 
 
 #Deploy a pod network
-echo 'Will deply flannel network'
+echo 'Will deploy flannel network'
+echo -e "\\033[33m Will deploy flannel network \\033[0m"
 #kubectl apply -f https://docs.projectcalico.org/v3.25/manifests/calico.yaml
 #kubectl apply -f https://raw.githubusercontent.com/kubernetes/ingress-nginx/controller-v0.49.0/deploy/static/provider/baremetal/deploy.yaml
 curl -LO https://raw.githubusercontent.com/coreos/flannel/master/Documentation/kube-flannel.yml
@@ -330,11 +331,42 @@ echo " Installation Successful
 echo " Run below Token on worker node to join cluster "
 kubeadm token create --print-join-command
 
+user=`whoami`
+[[ \$user == 'root' ]] && echo 'export KUBECONFIG=/etc/kubernetes/admin.conf' >> ~/.bashrc && source ~/.bashrc || mkdir -p \$HOME/.kube && sudo cp -i /etc/kubernetes/admin.conf $HOME/.kube/config && sudo chown $(id -u):$(id -g) $HOME/.kube/config
+
+echo ''
+echo 'The available alias:'
 alias k='kubectl'
 alias kw='kubectl -o wide'
 alias kk='kubectl -n kube-system'
 alias kkw='kk -o wide'
-alias |egrep '^k'
+alias ketc='kk exec -it etcd-master.lab -- etcdctl --cert /etc/kubernetes/pki/etcd/peer.crt --key /etc/kubernetes/pki/etcd/peer.key --cacert /etc/kubernetes/pki/etcd/ca.crt'
+alias | egrep ^k
+
+echo -en "alias k='kubectl'
+alias kw='kubectl -o wide'
+alias kk='kubectl -n kube-system'
+alias kkw='kk -o wide'
+alias ketc='kk exec -it etcd-master.lab -- etcdctl --cert /etc/kubernetes/pki/etcd/peer.crt --key /etc/kubernetes/pki/etcd/peer.key --cacert /etc/kubernetes/pki/etcd/ca.crt'" >> ~/.bashrc
+
+echo ''
+echo 'Topology is as following:'
+echo -e '          +--------------------------+
+          |                          |
+          |                          |
+          |192.168.3.3/24            | 192.168.3.6/24
++--------------------+         +-----+--------------+
+|                    |         |                    |
+|                    |         |                    |
+|  master            |         |  worker            |
+|                    |         |                    |
+|                    |         |                    |
+|                    |         |                    |
++---------+----------+         +----------+---------+
+          | mgmt                          |
+          |                               | mgmt
+          |                               |
+          +                               +'
 
 EOF
 
