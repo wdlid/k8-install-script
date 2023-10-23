@@ -196,7 +196,7 @@ if [[ \$num_cpus -lt 2 ]]; then
 fi
 
 # Confirm with the user before proceeding
-read -p "Do you want to proceed with the installation ? (y/n) " -n 1 -r
+read -p "Do you want to proceed with the installation ? (y/n) " -e -r
 echo   
 if [[ ! \$REPLY =~ ^[Yy]\$ ]]
 then
@@ -215,7 +215,7 @@ fi
 
 # Get the hostname
 echo "Enter the hostname:"
-read hostname
+read -e hostname
 hostnamectl set-hostname \$hostname
 echo "`ip route get 1 | awk '{print \$NF;exit}'` \$hostname" >> /etc/hosts
 
@@ -281,7 +281,7 @@ ufw reload
 echo 'Install Kubernetes components: kubelet kubeadm kubectl'
 versions=\`curl -s https://packages.cloud.google.com/apt/dists/kubernetes-xenial/main/binary-amd64/Packages | grep Version | awk '{print \$2}' | grep -P '\d\.[12]\d\.'\`
 IFS=\$'\n' versions=(\$versions)
-echo 'Please select K8S version you want to install'
+echo -e "\\033[33m Please select K8S version you want to install  \\033[0m"
 select version in "\${versions[@]}"; do   if [[ -n \$version ]]; then     echo "You have selected version \$version";     break;   else     echo "Invalid selection. Please try again.";   fi; done
 
 
@@ -290,12 +290,12 @@ apt-get install -y kubelet=\${version} kubeadm=\${version} kubectl=\${version}
 # Enable and start kubelet service
 systemctl enable --now kubelet
 
-echo "Please select a link you want to use as K8S cluster interface:"
+echo -e "\\033[33m Please select a link you want to use as K8S cluster interface:  \\033[0m"
 links=\`ls /sys/class/net\`
 IFS=\$'\n' links=(\$links) 
 select link in "\${links[@]}"; do   if [[ -n \$link ]]; then     echo "You have selected \$link";     break;   else     echo "Invalid selection. Please try again.";   fi; done
 
-echo "Will use \$link as K8S API interface, will add address 192.168.3.3/24 as it's address"
+echo -e "\\033[33m Will use \$link as K8S API interface, will add address 192.168.3.3/24 as it's address \\033[0m"
 ip a a 192.168.3.3/24 dev \$link
 
 # Initialize kubeadm
@@ -313,7 +313,6 @@ sudo chown \$(id -u):\$(id -g) \$HOME/.kube/config
 
 
 #Deploy a pod network
-echo 'Will deploy flannel network'
 echo -e "\\033[33m Will deploy flannel network \\033[0m"
 #kubectl apply -f https://docs.projectcalico.org/v3.25/manifests/calico.yaml
 #kubectl apply -f https://raw.githubusercontent.com/kubernetes/ingress-nginx/controller-v0.49.0/deploy/static/provider/baremetal/deploy.yaml
@@ -322,20 +321,20 @@ sed -i '/"Network/s/10.244.0.0\/16/10.120.0.0\/16/' kube-flannel.yml
 kubectl apply -f kube-flannel.yml
 
 #Cluster join link
-clear
-echo " Installation Successful 
+#clear
+echo -e "\\033[33m  Installation Successful 
 
 		type "bash" before proceed 
 		
-		"
-echo " Run below Token on worker node to join cluster "
+		 \\033[0m"
+echo -e "\\033[33m Run below Token on worker node to join cluster  \\033[0m"
 kubeadm token create --print-join-command
 
 user=`whoami`
-[[ \$user == 'root' ]] && echo 'export KUBECONFIG=/etc/kubernetes/admin.conf' >> ~/.bashrc && source ~/.bashrc || mkdir -p \$HOME/.kube && sudo cp -i /etc/kubernetes/admin.conf $HOME/.kube/config && sudo chown $(id -u):$(id -g) $HOME/.kube/config
+[[ \$user == 'root' ]] && echo 'export KUBECONFIG=/etc/kubernetes/admin.conf' >> ~/.bashrc && source ~/.bashrc || mkdir -p \$HOME/.kube && sudo cp -i /etc/kubernetes/admin.conf \$HOME/.kube/config && sudo chown \$(id -u):\$(id -g) \$HOME/.kube/config
 
 echo ''
-echo 'The available alias:'
+echo -e "\\033[33m The available alias: \\033[0m"
 alias k='kubectl'
 alias kw='kubectl -o wide'
 alias kk='kubectl -n kube-system'
