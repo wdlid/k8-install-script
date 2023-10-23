@@ -235,6 +235,7 @@ echo "deb https://apt.kubernetes.io/ kubernetes-xenial main" | tee -a /etc/apt/s
 
 
 # Install docker
+echo 'Installing docker....'
 apt-get install -y apt-transport-https ca-certificates curl software-properties-common
 curl -fsSL https://download.docker.com/linux/ubuntu/gpg | apt-key add -
 add-apt-repository -y "deb [arch=amd64] https://download.docker.com/linux/ubuntu \$(lsb_release -cs) stable"
@@ -246,6 +247,7 @@ systemctl start docker
 systemctl enable docker
 
 
+echo 'Installing containerd....'
 # Remove containerd config file
 apt-get install -y containerd.io
 rm -f /etc/containerd/config.toml
@@ -253,11 +255,13 @@ rm -f /etc/containerd/config.toml
 # Restart containerd service
 systemctl restart containerd
 systemctl enable containerd
-sudo swapoff -a
+
+#sudo swapoff -a
 
 
 # Set sysctl net.bridge.bridge-nf-call-iptables to 1
 echo "net.bridge.bridge-nf-call-iptables = 1" >> /etc/sysctl.conf
+echo "net.bridge.bridge-nf-call-ip6tables = 1" >> /etc/sysctl.conf
 sysctl -p
 
 
@@ -272,13 +276,33 @@ ufw reload
 
 
 # Install Kubernetes components
-apt-get install -y kubelet kubeadm kubectl
+echo 'Install Kubernetes components: kubelet kubeadm kubectl'
+versions=`curl -s https://packages.cloud.google.com/apt/dists/kubernetes-xenial/main/binary-amd64/Packages | grep Version | awk '{print $2}' | grep -P '\d\.[12]\d\.'`
+IFS=$'\n' versions=($versions)
+echo 'Please select K8S version you want to install'
+select version in "${versions[@]}"; do   if [[ -n $version ]]; then     echo "You have selected version $version";     break;   else     echo "Invalid selection. Please try again.";   fi; done
+
+
+apt-get install -y kubelet=${version} kubeadm=${version} kubectl=${version}
 
 # Enable and start kubelet service
 systemctl enable --now kubelet
 
+echo "Please select a link you want to use as K8S cluster interface:"
+links=`ls /sys/class/net`
+IFS=$'\n' links=($links) 
+select link in "${links[@]}"; do   if [[ -n $link ]]; then     echo "You have selected $link";     break;   else     echo "Invalid selection. Please try again.";   fi; done
+
+echo "Will use $link as K8S API interface, will add address 192.168.3.3/24 as it's address"
+ip a a 192.168.3.3/24 dev $link
+
 # Initialize kubeadm
-kubeadm init --ignore-preflight-errors=all
+kubeadm init \
+  --pod-network-cidr=10.120.0.0/16 \
+  --service-cidr=10.130.0.0/16 \
+  --ignore-preflight-errors=Swap \
+  --apiserver-advertise-address 192.168.3.3  ## modify this address based on your node IP.  \
+  --kubernetes-version ${version}
 
 # Copy kubeconfig to home directory
 mkdir -p \$HOME/.kube
@@ -287,11 +311,12 @@ sudo chown \$(id -u):\$(id -g) \$HOME/.kube/config
 
 
 #Deploy a pod network
-kubectl apply -f https://docs.projectcalico.org/v3.25/manifests/calico.yaml
-
-kubectl apply -f https://raw.githubusercontent.com/kubernetes/ingress-nginx/controller-v0.49.0/deploy/static/provider/baremetal/deploy.yaml
-
-
+echo 'Will deply flannel network'
+#kubectl apply -f https://docs.projectcalico.org/v3.25/manifests/calico.yaml
+#kubectl apply -f https://raw.githubusercontent.com/kubernetes/ingress-nginx/controller-v0.49.0/deploy/static/provider/baremetal/deploy.yaml
+curl -LO https://raw.githubusercontent.com/coreos/flannel/master/Documentation/kube-flannel.yml
+sed -i '/"Network/s/10.244.0.0\/16/10.120.0.0\/16/' kube-flannel.yml 
+kubectl apply -f kube-flannel.yml
 
 #Cluster join link
 clear
@@ -303,7 +328,11 @@ echo " Installation Successful
 echo " Run below Token on worker node to join cluster "
 kubeadm token create --print-join-command
 
-
+alias k='kubectl'
+alias kw='kubectl -o wide'
+alias kk='kubectl -n kube-system'
+alias kkw='kk -o wide'
+alias |egrep '^k'
 
 EOF
 
