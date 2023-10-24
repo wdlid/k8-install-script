@@ -214,7 +214,7 @@ if ! [ -x "\$(command -v apt-get)" ]; then
 fi
 
 # Get the hostname
-echo "Enter the hostname:"
+echo -e "\\033[33m Enter the hostname:  \\033[0m"
 read -e hostname
 hostnamectl set-hostname \$hostname
 echo "`ip route get 1 | awk '{print \$NF;exit}'` \$hostname" >> /etc/hosts
@@ -227,7 +227,7 @@ echo "deb https://apt.kubernetes.io/ kubernetes-xenial main" | tee -a /etc/apt/s
 apt update -y
 
 # Install docker
-echo 'Installing docker....Installing containerd....'
+echo -e "\\033[33m Installing docker....Installing containerd....  \\033[0m"
 apt install -y apt-transport-https ca-certificates curl software-properties-common
 curl -fsSL https://download.docker.com/linux/ubuntu/gpg | apt-key add -
 
@@ -252,6 +252,7 @@ systemctl enable containerd
 # Set sysctl net.bridge.bridge-nf-call-iptables to 1
 echo "net.bridge.bridge-nf-call-iptables = 1" >> /etc/sysctl.conf
 echo "net.bridge.bridge-nf-call-ip6tables = 1" >> /etc/sysctl.conf
+echo "net.ipv4.ip_forward = 1" >> /etc/sysctl.conf
 sysctl -p
 
 
@@ -266,7 +267,7 @@ ufw reload
 
 
 # Install Kubernetes components
-echo 'Install Kubernetes components: kubelet kubeadm kubectl'
+echo -e "\\033[33m Install Kubernetes components: kubelet kubeadm kubectl  \\033[0m"
 versions=\`curl -s https://packages.cloud.google.com/apt/dists/kubernetes-xenial/main/binary-amd64/Packages | grep Version | awk '{print \$2}' | grep -P '\d\.[12]\d\.'\`
 IFS=\$'\n' versions=(\$versions)
 echo -e "\\033[33m Please select K8S version you want to install  \\033[0m"
