@@ -159,23 +159,23 @@ echo "
 
 # Check for hardware prerequisites
 mem_size=\$(free -k | grep Mem | awk '{print \$2}')
-echo "Minimum memory required : 1048576 KB"
+echo "Minimum memory required : 2097152 KB"
 echo "Available memory : \$mem_size KB "
-if [[ \$mem_size -lt 1048576 ]]; then
-  echo "Error: Your system does not meet the minimum memory requirement of 1GB " >&2
+if [[ \$mem_size -lt 2007152 ]]; then
+  echo "Error: Your system does not meet the minimum memory requirement of 2GB " >&2
   exit 1
 fi
 
 num_cpus=\$(nproc)
-echo "Minimum CPU cores required : 1 cores"
+echo "Minimum CPU cores required : 2 cores"
 echo "Available CPU cores : \$num_cpus cores"
-if [[ \$num_cpus -lt 1 ]]; then
-  echo "Error: Your system does not meet the minimum CPU requirement of 1 cores " >&2
+if [[ \$num_cpus -lt 2 ]]; then
+  echo "Error: Your system does not meet the minimum CPU requirement of 2 cores " >&2
   exit 1
 fi
 
 # Confirm with the user before proceeding
-read -p "Do you want to proceed with the installation ? (y/n) " -n 1 -r
+read -p "Do you want to proceed with the installation ? (y/n) " -e -r
 echo   
 if [[ ! \$REPLY =~ ^[Yy]\$ ]]
 then
@@ -194,7 +194,7 @@ fi
 
 # Get the hostname
 echo "Enter the hostname:"
-read hostname
+read -e hostname
 hostnamectl set-hostname \$hostname
 echo "`ip route get 1 | awk '{print \$NF;exit}'` \$hostname" >> /etc/hosts
 
@@ -203,39 +203,37 @@ echo "`ip route get 1 | awk '{print \$NF;exit}'` \$hostname" >> /etc/hosts
 curl -s https://packages.cloud.google.com/apt/doc/apt-key.gpg | apt-key add -
 echo "deb https://apt.kubernetes.io/ kubernetes-xenial main" | tee -a /etc/apt/sources.list.d/kubernetes.list
 
-
 # Update the package list and upgrade all packages
-apt-get update -y
-apt-get -o upgrade -y
-
-# Install necessary packages
-apt-get install -y apt-transport-https
-apt-get update -y
+apt update -y
 
 # Install docker
-apt-get install -y apt-transport-https ca-certificates curl software-properties-common
+echo 'Installing docker....Installing containerd....'
+apt install -y apt-transport-https ca-certificates curl software-properties-common
 curl -fsSL https://download.docker.com/linux/ubuntu/gpg | apt-key add -
-add-apt-repository -y "deb [arch=amd64] https://download.docker.com/linux/ubuntu \$(lsb_release -cs) stable"
-apt-get -y install docker.io
-apt-get update -y
-apt-get -y install docker-ce docker-ce-cli docker-compose-plugin --skip-broken
 
+add-apt-repository -y "deb [arch=amd64] https://download.docker.com/linux/ubuntu \$(lsb_release -cs) stable"
+for pkg in docker.io docker-doc docker-compose docker-compose-v2 podman-docker containerd runc; do sudo apt-get remove $pkg; done
+apt install docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
+
+sleep 3
 systemctl start docker
 systemctl enable docker
 
-
 # Remove containerd config file
-apt-get install -y containerd.io
 rm -f /etc/containerd/config.toml
 
 # Restart containerd service
 systemctl restart containerd
 systemctl enable containerd
-sudo swapoff -a
+
+#sudo swapoff -a
+
+
 
 
 # Set sysctl net.bridge.bridge-nf-call-iptables to 1
 echo "net.bridge.bridge-nf-call-iptables = 1" >> /etc/sysctl.conf
+echo "net.bridge.bridge-nf-call-ip6tables = 1" >> /etc/sysctl.conf
 sysctl -p
 
 
@@ -251,14 +249,41 @@ apt-get install -y kubelet kubeadm kubectl
 # Enable and start kubelet service
 systemctl enable --now kubelet
 
+echo -e "\\033[33m Please select a link you want to use as K8S cluster interface:  \\033[0m"
+links=\`ls /sys/class/net\`
+IFS=\$'\n' links=(\$links) 
+select link in "\${links[@]}"; do   if [[ -n \$link ]]; then     echo "You have selected \$link";     break;   else     echo "Invalid selection. Please try again.";   fi; done
+
+echo -e "\\033[33m Will use \$link as K8S API interface, will add address 192.168.3.3/24 as it's address \\033[0m"
+ip a a 192.168.3.6/24 dev \$link
+
 #Cluster join link
-clear
+
+echo ''
+echo 'Topology is as following:'
+echo -e '          +--------------------------+
+          |                          |
+          |                          |
+          |192.168.3.3/24            | 192.168.3.6/24
++--------------------+         +-----+--------------+
+|                    |         |                    |
+|                    |         |                    |
+|  master            |         |  worker            |
+|                    |         |                    |
+|                    |         |                    |
+|                    |         |                    |
++---------+----------+         +----------+---------+
+          | mgmt                          |
+          |                               | mgmt
+          |                               |
+          +                               +'
+          
 echo " Installation Successful 
 
 		type "bash" before proceed 
 		
 		"
-echo " Join Cluster with kubeadm token "
+echo " Now Please Join Cluster with kubeadm token "
 
 EOF
 

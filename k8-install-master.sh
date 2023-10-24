@@ -182,7 +182,7 @@ echo "
 mem_size=\$(free -k | grep Mem | awk '{print \$2}')
 echo "Minimum memory required : 2097152 KB"
 echo "Available memory : \$mem_size KB "
-if [[ \$mem_size -lt 2097152 ]]; then
+if [[ \$mem_size -lt 2007152 ]]; then
   echo "Error: Your system does not meet the minimum memory requirement of 2GB " >&2
   exit 1
 fi
@@ -219,39 +219,27 @@ read -e hostname
 hostnamectl set-hostname \$hostname
 echo "`ip route get 1 | awk '{print \$NF;exit}'` \$hostname" >> /etc/hosts
 
-
-# Update the package list and upgrade all packages
-apt-get update -y
-apt-get -o upgrade -y
-
-# Install necessary packages
-apt-get install -y apt-transport-https
-apt-get update -y
-
-
 # Add Kubernetes repository
 curl -s https://packages.cloud.google.com/apt/doc/apt-key.gpg | apt-key add -
 echo "deb https://apt.kubernetes.io/ kubernetes-xenial main" | tee -a /etc/apt/sources.list.d/kubernetes.list
 
+# Update the package list and upgrade all packages
+apt update -y
 
 # Install docker
-echo 'Installing docker....'
-apt-get install -y apt-transport-https ca-certificates curl software-properties-common
+echo 'Installing docker....Installing containerd....'
+apt install -y apt-transport-https ca-certificates curl software-properties-common
 curl -fsSL https://download.docker.com/linux/ubuntu/gpg | apt-key add -
 
 add-apt-repository -y "deb [arch=amd64] https://download.docker.com/linux/ubuntu \$(lsb_release -cs) stable"
-apt-get -y install docker.io
-apt-get update -y
-apt-get -y install docker-ce docker-ce-cli docker-compose-plugin
+for pkg in docker.io docker-doc docker-compose docker-compose-v2 podman-docker containerd runc; do sudo apt-get remove $pkg; done
+apt install docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
 
-systemctl unmask docker
+sleep 3
 systemctl start docker
 systemctl enable docker
 
-
-echo 'Installing containerd....'
 # Remove containerd config file
-apt-get install -y containerd.io
 rm -f /etc/containerd/config.toml
 
 # Restart containerd service
@@ -340,13 +328,14 @@ alias kw='kubectl -o wide'
 alias kk='kubectl -n kube-system'
 alias kkw='kk -o wide'
 alias ketc='kk exec -it etcd-master.lab -- etcdctl --cert /etc/kubernetes/pki/etcd/peer.crt --key /etc/kubernetes/pki/etcd/peer.key --cacert /etc/kubernetes/pki/etcd/ca.crt'
-alias | egrep ^k
+
 
 echo -en "alias k='kubectl'
 alias kw='kubectl -o wide'
 alias kk='kubectl -n kube-system'
 alias kkw='kk -o wide'
 alias ketc='kk exec -it etcd-master.lab -- etcdctl --cert /etc/kubernetes/pki/etcd/peer.crt --key /etc/kubernetes/pki/etcd/peer.key --cacert /etc/kubernetes/pki/etcd/ca.crt'" >> ~/.bashrc
+alias | egrep k
 
 echo ''
 echo 'Topology is as following:'
